@@ -22,6 +22,7 @@
 #include "maddy/paragraphparser.h"
 #include "maddy/quoteparser.h"
 #include "maddy/tableparser.h"
+#include "maddy/gh_tableparser.h"
 #include "maddy/unorderedlistparser.h"
 
 // LineParser
@@ -183,6 +184,13 @@ private:
       parser = std::make_shared<maddy::QuoteParser>(
         [this](std::string& line){ this->runLineParser(line); },
         [this](const std::string& line){ return this->getBlockParserForLine(line); }
+      );
+    }
+    else if (maddy::GitHubTableParser::IsStartingLine(line))
+    {
+      parser = std::make_shared<maddy::GitHubTableParser>(
+        [this](std::string& line){ this->runLineParser(line); },
+        nullptr
       );
     }
     else if (maddy::TableParser::IsStartingLine(line))
