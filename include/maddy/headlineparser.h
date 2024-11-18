@@ -57,9 +57,11 @@ public:
    */
   HeadlineParser(
     std::function<void(std::string&)> parseLineCallback,
-    std::function<std::shared_ptr<BlockParser>(const std::string& line)> getBlockParserForLineCallback
+    std::function<std::shared_ptr<BlockParser>(const std::string& line)> getBlockParserForLineCallback,
+    bool isInlineParserAllowed = true
   )
     : BlockParser(parseLineCallback, getBlockParserForLineCallback)
+    , isInlineParserAllowed(isInlineParserAllowed)
   {}
 
   /**
@@ -103,7 +105,7 @@ protected:
   bool
   isLineParserAllowed() const override
   {
-    return false;
+    return this->isInlineParserAllowed;
   }
 
   void
@@ -139,6 +141,9 @@ protected:
     }
     line += std::regex_replace(anchor, anchorRegex, "<a id=\"$1\"/>");;
   }
+
+private:
+  bool isInlineParserAllowed;
 }; // class HeadlineParser
 
 // -----------------------------------------------------------------------------

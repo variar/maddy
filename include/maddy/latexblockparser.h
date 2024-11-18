@@ -7,8 +7,8 @@
 // -----------------------------------------------------------------------------
 
 #include <functional>
-#include <regex>
 #include <string>
+#include <regex>
 
 #include "maddy/blockparser.h"
 
@@ -19,11 +19,31 @@ namespace maddy {
 // -----------------------------------------------------------------------------
 
 /**
- * UnorderedListParser
+ * LatexBlockParser
+ *
+ * Support for https://www.mathjax.org/
+ * Be aware, that if you want to make MathJax work, you need also their
+ * JavaScript library added to your HTML code.
+ * maddy does not itself add that code to be more flexible in how you write your
+ * head and full body.
+ *
+ * From Markdown: `$$` surrounded text
+ *
+ * ```
+ *  $$some formula
+ *  $$
+ * ```
+ *
+ * To HTML:
+ *
+ * ```
+ * $$some formula
+ * $$
+ * ```
  *
  * @class
  */
-class UnorderedListParser : public BlockParser
+class LatexBlockParser : public BlockParser
 {
 public:
   /**
@@ -33,7 +53,7 @@ public:
    * @param {std::function<void(std::string&)>} parseLineCallback
    * @param {std::function<std::shared_ptr<BlockParser>(const std::string& line)>} getBlockParserForLineCallback
    */
-   UnorderedListParser(
+   LatexBlockParser(
     std::function<void(std::string&)> parseLineCallback,
     std::function<std::shared_ptr<BlockParser>(const std::string& line)> getBlockParserForLineCallback
   )
@@ -45,7 +65,11 @@ public:
   /**
    * IsStartingLine
    *
-   * An unordered list starts with `* `.
+   * If the line starts with two dollars, then it is a latex block.
+   *
+   * ```
+   *  $$
+   * ```
    *
    * @method
    * @param {const std::string&} line
@@ -54,7 +78,7 @@ public:
   static bool
   IsStartingLine(const std::string& line)
   {
-    static std::regex re("^[+*-] .*");
+    static std::regex re(R"(^(?:\$){2}(.*)$)");
     return std::regex_match(line, re);
   }
 
@@ -74,59 +98,37 @@ protected:
   bool
   isInlineBlockAllowed() const override
   {
-    return true;
+    return false;
   }
 
   bool
   isLineParserAllowed() const override
   {
-    return true;
+    return false;
   }
 
   void
   parseBlock(std::string& line) override
   {
-    bool isStartOfNewListItem = IsStartingLine(line);
-    uint32_t indentation = getIndentationWidth(line);
-
-    static std::regex lineRegex("^([+*-] )");
-    line = std::regex_replace(line, lineRegex, "");
-
-    if (!this->isStarted)
+    if (!this->isStarted && line.substr(0, 2) == "$$")
     {
-      line = "<ul><li>" + line;
       this->isStarted = true;
-      return;
+      this->isFinished = false;
     }
 
-    if (indentation >= 2)
+    if (this->isStarted && !this->isFinished && line.size() > 1 && line.substr(line.size() - 2, 2) == "$$")
     {
-      line = line.substr(2);
-      return;
-    }
-
-    if (
-      line.empty() ||
-      line.find("</li><li>") != std::string::npos ||
-      line.find("</li></ol>") != std::string::npos ||
-      line.find("</li></ul>") != std::string::npos
-    )
-    {
-      line = "</li></ul>" + line;
       this->isFinished = true;
-      return;
+      this->isStarted = false;
     }
 
-    if (isStartOfNewListItem)
-    {
-      line = "</li><li>" + line;
-    }
+    line += "\n";
   }
 
 private:
   bool isStarted;
   bool isFinished;
-}; // class UnorderedListParser
+}; // class LatexBlockParser
 
 // -----------------------------------------------------------------------------
 
